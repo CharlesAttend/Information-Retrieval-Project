@@ -20,6 +20,7 @@ class BM25:
         tokenized_corpus = [doc.split(" ") for doc in corpus]
         self.bm25 = BM25Okapi(tokenized_corpus, **kwargs)
         self.corpus = corpus
+        return self
 
     def predict(self, queries: List) -> NDArray:
         """Renvoie le score BM25 associés à chaque document du corpus pour chaque queries en paramètre.
