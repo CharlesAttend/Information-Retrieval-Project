@@ -13,7 +13,8 @@ class IrDataset(Dataset):
         transform_doc: callable = None,
     ):
         """Base qui ne fonctionne pas, car je sais pas ce dont on a besoin yet
-        Si c'est les qrels, les scoreddocs ou juste les doc .
+        Si c'est les qrels, les scoreddocs ou juste les doc.
+        Pour moi c'est scoreddocs
 
         Parameters
         ----------
@@ -28,14 +29,16 @@ class IrDataset(Dataset):
         self.transform_query = transform_query
         self.transform_doc = transform_doc
         self.ir_dataset = ir_dataset
+        self.ir_dataset_iter = ir_dataset.scoreddocs_iter()
+        
 
     def __len__(self):
-        return len(self.ir_dataset)
+        return len(self.scoreddocs_count())
 
     def __getitem__(self, idx):
         if is_tensor(idx):
             idx = idx.tolist()
-        doc, query = self.ir_dataset[idx]
+        doc, query, BM25_score = self.ir_dataset_iter[idx]
 
         if self.transform_query:
             query = self.transform_query(query)
