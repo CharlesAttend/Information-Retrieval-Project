@@ -1,6 +1,7 @@
 from torch import is_tensor
 from torch.utils.data import Dataset
 from ir_datasets.datasets.base import Dataset as irDataset
+from sentence_transformers import InputExample
 
 
 class IrDataset(Dataset):
@@ -29,8 +30,9 @@ class IrDataset(Dataset):
         self.transform_query = transform_query
         self.transform_doc = transform_doc
         self.ir_dataset = ir_dataset
-        self.ir_dataset_iter = ir_dataset.scoreddocs_iter()
-        
+        self.qrels_iter = ir_dataset.qrels_iter()
+        self.query_iter = ir_dataset.queries_iter()
+        self.docs_iter = ir_dataset.docs_iter()
 
     def __len__(self):
         return len(self.scoreddocs_count())
@@ -38,7 +40,9 @@ class IrDataset(Dataset):
     def __getitem__(self, idx):
         if is_tensor(idx):
             idx = idx.tolist()
-        doc, query, BM25_score = self.ir_dataset_iter[idx]
+        doc_id, query_id, revelance = self.qrels_iter[idx]
+        doc = self.docs_iter[doc_id]
+        query = self.query_iter[query_id]
 
         if self.transform_query:
             query = self.transform_query(query)
@@ -46,4 +50,9 @@ class IrDataset(Dataset):
         if self.transform_doc:
             doc = self.transform_doc(query)
 
-        return doc, query
+        return InputExample(texts=[query, doc], label=revelance)
+        # return doc, query, revelance
+
+    def get_by_ids(self, idx):
+        doc_id, query_id, revelance = self.qrels_iter[idx]
+        return doc_id, query_id, revelance
