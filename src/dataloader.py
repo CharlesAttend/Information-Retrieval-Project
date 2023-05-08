@@ -30,12 +30,13 @@ class IrDataset(Dataset):
         self.transform_query = transform_query
         self.transform_doc = transform_doc
         self.ir_dataset = ir_dataset
+        self.scoreddocs_iter = ir_dataset.scoreddocs_iter()
         self.qrels_iter = ir_dataset.qrels_iter()
         self.query_iter = ir_dataset.queries_iter()
         self.docs_iter = ir_dataset.docs_iter()
 
     def __len__(self):
-        return len(self.scoreddocs_count())
+        return self.ir_dataset.scoreddocs_count()
 
     def __getitem__(self, idx):
         if is_tensor(idx):
@@ -43,7 +44,9 @@ class IrDataset(Dataset):
         doc_id, query_id, revelance = self.qrels_iter[idx]
         doc = self.docs_iter[doc_id]
         query = self.query_iter[query_id]
-
+        if self.inject_bm25:
+            bm25_score = self.scoreddocs_iter[idx]
+        
         if self.transform_query:
             query = self.transform_query(query)
 
