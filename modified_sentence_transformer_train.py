@@ -19,9 +19,6 @@ from sentence_transformers import LoggingHandler, util
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 import wandb
-!pip - q install wandb
-
-
 # %%
 wandb.login()
 
@@ -92,6 +89,7 @@ class CustomCrossEncoder(CrossEncoder):
                 "evaluation_steps": evaluation_steps,
                 "optimizer_params": optimizer_params,
                 "optimizer_class": optimizer_class.__name__,
+                "model": model_name,
             }
         )
         train_dataloader.collate_fn = self.smart_batching_collate
@@ -203,6 +201,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s',
 
 # First, we define the transformer model we want to fine-tune
 model_name = 'microsoft/MiniLM-L12-H384-uncased'
+# model_name = 'distilroberta-base'
 train_batch_size = 32
 num_epochs = 1
 model_save_path = 'output/training_ms-marco_cross-encoder-' + \
@@ -354,12 +353,12 @@ logging.info("Warmup-steps: {}".format(warmup_steps))
 model.fit(train_dataloader=train_dataloader,
           evaluator=evaluator,
           epochs=num_epochs,
-          loss_fct=nn.CrossEntropyLoss(),
-          evaluation_steps=100,
+        #   loss_fct=nn.CrossEntropyLoss(),
+          evaluation_steps=10_000,
           warmup_steps=warmup_steps,
           output_path=model_save_path,
           use_amp=True,
-          optimizer_class=Adam,
+        #   optimizer_class=Adam,
           optimizer_params={'lr': 7e-6},
           callback=eval_callback)
 
