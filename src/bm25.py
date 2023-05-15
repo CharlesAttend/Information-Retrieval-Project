@@ -37,12 +37,10 @@ class BM25:
         """
         # Support pour prendre une str nécéssaire ?
         if isinstance(queries, str):
-            queries = list(queries)
-            tokenized_queries = [query.split(" ") for query in queries]
+            tokenized_query = queries.split(" ")
             return np.array(
                 [
                     self.bm25.get_scores(tokenized_query)
-                    for tokenized_query in tokenized_queries
                 ]
             ).squeeze()
         else:
@@ -54,14 +52,18 @@ class BM25:
                     for tokenized_query in tokenized_queries
                 ]
             )
-
-    def predict_top_n(self, queries: List, n=5) -> NDArray:
+    def predict_batch(self, query, doc_id):
+        self.bm25.get_batch_scores(query)
+        
+    def predict_top_n(self, queries: List, documents=None, n=5) -> NDArray:
         """Renvoie les `n` document du corpus ayant les plus grand scores pour chaque queries en paramètre.
 
         Parameters
         ----------
         queries : List
             _description_
+        documents : List
+            List of document to eval
         n : int, optional
             _description_, by default 5
 
@@ -71,9 +73,10 @@ class BM25:
             Liste de document
         """
         tokenized_queries = [query.split(" ") for query in queries]
-
+        if not documents:
+            documents = self.corpus
         return np.array([
-            self.bm25.get_top_n(tokenized_query, self.corpus, n=n)
+            self.bm25.get_top_n(tokenized_query, documents, n=n)
             for tokenized_query in tokenized_queries
         ])
 
