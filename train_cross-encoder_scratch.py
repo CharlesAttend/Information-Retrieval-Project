@@ -49,8 +49,8 @@ model_save_path = 'output/training_ms-marco_cross-encoder-'+model_name.replace("
 pos_neg_ration = 4
 
 # Maximal number of training samples we want to use
-# max_train_samples = 2e7
-max_train_samples = 8_800_000
+max_train_samples = 2e7
+# max_train_samples = 8_800_000
 
 #We set num_labels=1, which predicts a continous score between 0 and 1
 model = CrossEncoder(model_name, num_labels=1, max_length=512)
@@ -152,7 +152,7 @@ with gzip.open(train_filepath, 'rt') as fIn:
             passage = corpus[neg_id]
             label = 0
 
-        train_samples.append(InputExample(texts=[query, passage], label=label))
+        train_samples.append(InputExample(texts=[query, '15', passage], label=label))
         cnt += 1
 
         if cnt >= max_train_samples:
@@ -175,7 +175,7 @@ logging.info("Warmup-steps: {}".format(warmup_steps))
 model.fit(train_dataloader=train_dataloader,
           evaluator=evaluator,
           epochs=num_epochs,
-          evaluation_steps=10000,
+          evaluation_steps=100,
           warmup_steps=warmup_steps,
           output_path=model_save_path,
           use_amp=True,

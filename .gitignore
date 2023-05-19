@@ -3,6 +3,8 @@ data
 anserini
 pyserini
 runs
+output
+datasets
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -133,3 +135,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+wandb
