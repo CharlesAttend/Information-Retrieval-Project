@@ -1,0 +1,6 @@
+PWD /mnt/48566869-e5b1-482e-907d-2c513d1afe25/Documents/Information-Retrieval-Project/slides
+INPUT /home/charles/.TinyTeX/texmf.cnf
+INPUT /home/charles/.TinyTeX/texmf-dist/web2c/texmf.cnf
+INPUT /home/charles/.TinyTeX/texmf-var/web2c/pdftex/pdflatex.fmt
+INPUT /mnt/48566869-e5b1-482e-907d-2c513d1afe25/Documents/Information-Retrieval-Project/slides/ped-pdflatex.tex
+OUTPUT ped-pdflatex.log
