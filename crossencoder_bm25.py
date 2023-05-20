@@ -41,6 +41,35 @@ class CustomCrossEncoder(CrossEncoder):
             default_activation_function,
         )
 
+    def smart_batching_collate(self, batch):
+        queries = []
+        bm25 = []
+        passages = []
+        labels = []
+
+        for example in batch:
+            queries.append(example.texts[0])
+            bm25.append(example.texts[1])
+            passages.append(example.texts[2])
+            labels.append(example.label)
+
+        # Tokenize separately to control max_length for each
+        tokenized_queries = self.tokenizer(queries, padding=True, truncation=True, return_tensors="pt", max_length=30)
+        tokenized_scores = self.tokenizer(bm25, padding=True, truncation=True, return_tensors="pt")
+        tokenized_passages = self.tokenizer(passages, padding=True, truncation=True, return_tensors="pt", max_length=200)
+
+        # Concatenate query, bm, passage tokens along the sequence length dimension
+        tokenized = {
+            'input_ids': torch.cat([tokenized_queries['input_ids'], tokenized_scores['input_ids'], tokenized_passages['input_ids']], dim=-1),
+            'attention_mask': torch.cat([tokenized_queries['attention_mask'], tokenized_scores['attention_mask'], tokenized_passages['attention_mask']], dim=-1)
+        }
+        labels = torch.tensor(labels, dtype=torch.float if self.config.num_labels == 1 else torch.long).to(self._target_device)
+
+        for name in tokenized:
+            tokenized[name] = tokenized[name].to(self._target_device)
+
+        return tokenized, labels
+
     def fit(
         self,
         train_dataloader: DataLoader,
