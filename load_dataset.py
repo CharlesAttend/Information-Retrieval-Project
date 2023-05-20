@@ -71,7 +71,7 @@ def load_train(train_filepath, corpus, queries):
             bm25_score = int(bm25_normalized * 100)
 
             train_samples.append(
-                InputExample(texts=[query, str(bm25_score), passage], label=label)
+                InputExample(texts=[query, str(bm25_score), passage], label=int(label))
             )
 
     return train_samples
