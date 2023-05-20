@@ -17,3 +17,6 @@ faiss-cpu
 torch
 psutil
 maven
+sentence_transformers
+wandb
+rank_bm25
