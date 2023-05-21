@@ -17,7 +17,7 @@ fi
 
 .venv/bin/python pyserini/tools/scripts/msmarco/convert_msmarco_to_trec_qrels.py \
    --input pyserini/tools/topics-and-qrels/qrels.msmarco-passage.dev-subset.txt \
-   --output datasets/collectionandqueries/qrels.dev.small.trec
+   --output data/msmarco-passage/qrels.dev.small.trec
 
 pyserini/tools/eval/trec_eval.9.0.4/trec_eval -c -mrecall.1000 -mmap \
-   datasets/collectionandqueries/qrels.dev.small.trec runs/run.msmarco-passage.bm25tuned.trec
+   data/passage/qrels.dev.small.trec runs/run.msmarco-passage.bm25tuned.trec

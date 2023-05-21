@@ -89,6 +89,52 @@ class CustomCrossEncoder(CrossEncoder):
 
         return tokenized, labels
 
+    def smart_batching_collate_text_only(self, batch):
+        queries = []
+        bm25 = []
+        passages = []
+
+        for example in batch:
+            queries.append(example[0])
+            bm25.append(example[1])
+            passages.append(example[2])
+
+        # Tokenize separately to control max_length for each
+        tokenized_queries = self.tokenizer(
+            queries, padding=True, truncation=True, return_tensors="pt", max_length=30
+        )
+        tokenized_scores = self.tokenizer(
+            bm25, padding=True, truncation=True, return_tensors="pt"
+        )
+        tokenized_passages = self.tokenizer(
+            passages, padding=True, truncation=True, return_tensors="pt", max_length=200
+        )
+
+        # Concatenate query, bm, passage tokens along the sequence length dimension
+        tokenized = {
+            "input_ids": torch.cat(
+                [
+                    tokenized_queries["input_ids"],
+                    tokenized_scores["input_ids"],
+                    tokenized_passages["input_ids"],
+                ],
+                dim=-1,
+            ),
+            "attention_mask": torch.cat(
+                [
+                    tokenized_queries["attention_mask"],
+                    tokenized_scores["attention_mask"],
+                    tokenized_passages["attention_mask"],
+                ],
+                dim=-1,
+            ),
+        }
+
+        for name in tokenized:
+            tokenized[name] = tokenized[name].to(self._target_device)
+
+        return tokenized
+
     def fit(
         self,
         train_dataloader: DataLoader,
@@ -136,6 +182,7 @@ class CustomCrossEncoder(CrossEncoder):
 
         self.counter = 0
         self.best_score = -9999999
+        self.best_loss = 9999999
         num_train_steps = int(len(train_dataloader) * epochs)
 
         # Prepare optimizers
@@ -241,19 +288,103 @@ class CustomCrossEncoder(CrossEncoder):
                     self.model.zero_grad()
                     self.model.train()
 
+                if loss_value <= self.best_loss:
+                    loss_value = self.best_loss
+                    self.counter = 0
+                else:
+                    self.counter += 1
+                    if self.counter >= patience:
+                        break
+
             if evaluator is not None:
-                try:
-                    self._eval_during_training(
-                        evaluator,
-                        output_path,
-                        save_best_model,
-                        epoch,
-                        -1,
-                        callback,
-                        patience,
-                    )
-                except EarlyStopping:
-                    break
+                self._eval_during_training(
+                    evaluator,
+                    output_path,
+                    save_best_model,
+                    epoch,
+                    -1,
+                    callback,
+                )
+
+    def predict(
+        self,
+        sentences: List[List[str]],
+        batch_size: int = 32,
+        show_progress_bar: bool = None,
+        num_workers: int = 0,
+        activation_fct=None,
+        apply_softmax=False,
+        convert_to_numpy: bool = True,
+        convert_to_tensor: bool = False,
+    ):
+        """
+        Performs predicts with the CrossEncoder on the given sentence pairs.
+
+        :param sentences: A list of sentence pairs [[Sent1, Sent2], [Sent3, Sent4]]
+        :param batch_size: Batch size for encoding
+        :param show_progress_bar: Output progress bar
+        :param num_workers: Number of workers for tokenization
+        :param activation_fct: Activation function applied on the logits output of the CrossEncoder. If None, nn.Sigmoid() will be used if num_labels=1, else nn.Identity
+        :param convert_to_numpy: Convert the output to a numpy matrix.
+        :param apply_softmax: If there are more than 2 dimensions and apply_softmax=True, applies softmax on the logits output
+        :param convert_to_tensor:  Conver the output to a tensor.
+        :return: Predictions for the passed sentence pairs
+        """
+        logger = logging.getLogger(__name__)
+        input_was_string = False
+        if isinstance(
+            sentences[0], str
+        ):  # Cast an individual sentence to a list with length 1
+            sentences = [sentences]
+            input_was_string = True
+
+        inp_dataloader = DataLoader(
+            sentences,
+            batch_size=batch_size,
+            collate_fn=self.smart_batching_collate_text_only,
+            num_workers=num_workers,
+            shuffle=False,
+        )
+
+        if show_progress_bar is None:
+            show_progress_bar = (
+                logger.getEffectiveLevel() == logging.INFO
+                or logger.getEffectiveLevel() == logging.DEBUG
+            )
+
+        iterator = inp_dataloader
+        if show_progress_bar:
+            iterator = tqdm(inp_dataloader, desc="Batches")
+
+        if activation_fct is None:
+            activation_fct = self.default_activation_function
+
+        pred_scores = []
+        self.model.eval()
+        self.model.to(self._target_device)
+        with torch.no_grad():
+            for features in iterator:
+                model_predictions = self.model(**features, return_dict=True)
+                logits = activation_fct(model_predictions.logits)
+
+                if apply_softmax and len(logits[0]) > 1:
+                    logits = torch.nn.functional.softmax(logits, dim=1)
+                pred_scores.extend(logits)
+
+        if self.config.num_labels == 1:
+            pred_scores = [score[0] for score in pred_scores]
+
+        if convert_to_tensor:
+            pred_scores = torch.stack(pred_scores)
+        elif convert_to_numpy:
+            pred_scores = np.asarray(
+                [score.cpu().detach().numpy() for score in pred_scores]
+            )
+
+        if input_was_string:
+            pred_scores = pred_scores[0]
+
+        return pred_scores
 
     def _eval_during_training(
         self,
