@@ -7,7 +7,7 @@ from load_dataset import load_corpus, load_queries, load_eval
 
 
 def save_train(
-    train_filepath, output_filepath, max_train_samples=2e7, pos_neg_ration=4
+    train_filepath, output_filepath, dev_samples, max_train_samples=2e7, pos_neg_ration=4
 ):
     index_reader = IndexReader("data/msmarco-index/")
     counter = 0
