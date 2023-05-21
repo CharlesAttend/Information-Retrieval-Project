@@ -17,9 +17,6 @@ from src.bm25 import *
 from load_dataset import load_corpus, load_queries, load_train, load_eval
 
 
-wandb.login()
-
-
 class CustomCrossEncoder(CrossEncoder):
     def __init__(
         self,
@@ -54,16 +51,38 @@ class CustomCrossEncoder(CrossEncoder):
             labels.append(example.label)
 
         # Tokenize separately to control max_length for each
-        tokenized_queries = self.tokenizer(queries, padding=True, truncation=True, return_tensors="pt", max_length=30)
-        tokenized_scores = self.tokenizer(bm25, padding=True, truncation=True, return_tensors="pt")
-        tokenized_passages = self.tokenizer(passages, padding=True, truncation=True, return_tensors="pt", max_length=200)
+        tokenized_queries = self.tokenizer(
+            queries, padding=True, truncation=True, return_tensors="pt", max_length=30
+        )
+        tokenized_scores = self.tokenizer(
+            bm25, padding=True, truncation=True, return_tensors="pt"
+        )
+        tokenized_passages = self.tokenizer(
+            passages, padding=True, truncation=True, return_tensors="pt", max_length=200
+        )
 
         # Concatenate query, bm, passage tokens along the sequence length dimension
         tokenized = {
-            'input_ids': torch.cat([tokenized_queries['input_ids'], tokenized_scores['input_ids'], tokenized_passages['input_ids']], dim=-1),
-            'attention_mask': torch.cat([tokenized_queries['attention_mask'], tokenized_scores['attention_mask'], tokenized_passages['attention_mask']], dim=-1)
+            "input_ids": torch.cat(
+                [
+                    tokenized_queries["input_ids"],
+                    tokenized_scores["input_ids"],
+                    tokenized_passages["input_ids"],
+                ],
+                dim=-1,
+            ),
+            "attention_mask": torch.cat(
+                [
+                    tokenized_queries["attention_mask"],
+                    tokenized_scores["attention_mask"],
+                    tokenized_passages["attention_mask"],
+                ],
+                dim=-1,
+            ),
         }
-        labels = torch.tensor(labels, dtype=torch.float if self.config.num_labels == 1 else torch.long).to(self._target_device)
+        labels = torch.tensor(
+            labels, dtype=torch.float if self.config.num_labels == 1 else torch.long
+        ).to(self._target_device)
 
         for name in tokenized:
             tokenized[name] = tokenized[name].to(self._target_device)
@@ -269,57 +288,61 @@ def eval_callback(score, epoch, step):
     wandb.log({"MRR": score})
 
 
-# First, we define the transformer model we want to fine-tune
-model_name = "microsoft/MiniLM-L12-H384-uncased"
-train_batch_size = 32
-num_epochs = 10
-model_save_path = (
-    "output/training_ms-marco_cross-encoder-"
-    + model_name.replace("/", "-")
-    + "-"
-    + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-)
+if __name__ == "__main__":
+    wandb.login()
+    # First, we define the transformer model we want to fine-tune
+    model_name = "microsoft/MiniLM-L12-H384-uncased"
+    train_batch_size = 32
+    num_epochs = 10
+    model_save_path = (
+        "output/training_ms-marco_cross-encoder-"
+        + model_name.replace("/", "-")
+        + "-"
+        + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    )
 
-# We set num_labels=1, which predicts a continous score between 0 and 1
-model = CustomCrossEncoder(model_name, num_labels=1, max_length=512)
+    # We set num_labels=1, which predicts a continous score between 0 and 1
+    model = CustomCrossEncoder(model_name, num_labels=1, max_length=512)
 
-# Now we read the MS Marco dataset
-data_folder = "./data/msmarco-passage/"
-corpus = load_corpus(os.path.join(data_folder, "collection.tsv"))
-queries = load_queries(os.path.join(data_folder, "queries.train.tsv"))
-dev_samples = load_eval(
-    os.path.join(data_folder, "msmarco-qidpidtriples.rnd-shuf.train-eval.tsv.gz"),
-    corpus,
-    queries,
-)
-train_samples = load_train(
-    os.path.join(data_folder, "msmarco.bm25.train.tsv.gz"), corpus, queries
-)
-train_dataloader = DataLoader(train_samples, shuffle=True, batch_size=train_batch_size)
+    # Now we read the MS Marco dataset
+    data_folder = "./data/msmarco-passage/"
+    corpus = load_corpus(os.path.join(data_folder, "collection.tsv"))
+    queries = load_queries(os.path.join(data_folder, "queries.train.tsv"))
+    dev_samples = load_eval(
+        os.path.join(data_folder, "msmarco-qidpidtriples.rnd-shuf.train-eval.tsv.gz"),
+        corpus,
+        queries,
+    )
+    train_samples = load_train(
+        os.path.join(data_folder, "msmarco.bm25.train.tsv.gz"), corpus, queries
+    )
+    train_dataloader = DataLoader(
+        train_samples, shuffle=True, batch_size=train_batch_size
+    )
 
-# We add an evaluator, which evaluates the performance during training
-# It performs a classification task and measures scores like F1 (finding relevant passages) and Average Precision
-evaluator = CERerankingEvaluator(dev_samples, name="train-eval")
+    # We add an evaluator, which evaluates the performance during training
+    # It performs a classification task and measures scores like F1 (finding relevant passages) and Average Precision
+    evaluator = CERerankingEvaluator(dev_samples, name="train-eval")
 
-# Configure the training
-warmup_steps = 5000
-logging.info("Warmup-steps: {}".format(warmup_steps))
+    # Configure the training
+    warmup_steps = 5000
+    logging.info("Warmup-steps: {}".format(warmup_steps))
 
-# Train the model
-model.fit(
-    train_dataloader=train_dataloader,
-    evaluator=evaluator,
-    epochs=num_epochs,
-    patience=4,
-    # loss_fct=nn.CrossEntropyLoss(),
-    evaluation_steps=10_000,
-    warmup_steps=warmup_steps,
-    output_path=model_save_path,
-    use_amp=True,
-    # optimizer_class=Adam,
-    # optimizer_params={'lr': 7e-6},
-    callback=eval_callback,
-)
+    # Train the model
+    model.fit(
+        train_dataloader=train_dataloader,
+        evaluator=evaluator,
+        epochs=num_epochs,
+        patience=4,
+        # loss_fct=nn.CrossEntropyLoss(),
+        evaluation_steps=10_000,
+        warmup_steps=warmup_steps,
+        output_path=model_save_path,
+        use_amp=True,
+        # optimizer_class=Adam,
+        # optimizer_params={'lr': 7e-6},
+        callback=eval_callback,
+    )
 
-# Save latest model
-model.save(model_save_path + "-latest")
+    # Save latest model
+    model.save(model_save_path + "-latest")

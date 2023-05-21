@@ -3,7 +3,7 @@ if [ -z "$JAVA_HOME" ] || [ "$JAVA_HOME" != "/usr/lib/jvm/java-1.11.0-openjdk-am
 fi
 
 .venv/bin/python -m pyserini.search.lucene \
-  --index datasets/msmarco-index \
+  --index data/msmarco-index \
   --topics msmarco-passage-dev-subset \
   --output runs/run.msmarco-passage.bm25tuned.txt \
   --output-format msmarco \
