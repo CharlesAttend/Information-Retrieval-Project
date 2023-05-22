@@ -223,6 +223,7 @@ en terme de résultat global c'est le bert large
 |               | MRR@10 | MAP  | NDCG@10 | Recall@1000 |
 |---------------|--------|------|---------|-------------|
 | BM25          | .187   | .277 | .234    | .808        |
+| Baseline      | .368   | .371 | .478    | .857        |
 | Cross-Encoder | .254   | .261 | .380    | .857        |
 
 Sûrement un problème dans l'apprentissage et de tuning de paramètres... :pensive:
