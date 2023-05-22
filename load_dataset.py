@@ -62,12 +62,12 @@ def load_train(train_filepath, corpus, queries):
     train_samples = []
     with gzip.open(train_filepath, "rt") as fIn:
         for line in tqdm(fIn, unit_scale=True):
-            qid, corpus_id, label, bm25_score_per_doc = line.strip().split("\t")
+            qid, corpus_id, label, bm25_score = line.strip().split("\t")
 
             query = queries[qid]
             passage = corpus[corpus_id]
 
-            bm25_normalized = min_max_global(float(bm25_score_per_doc), 0, 50)
+            bm25_normalized = min_max_global(float(bm25_score), 0, 50)
             bm25_score = int(bm25_normalized * 100)
 
             train_samples.append(
@@ -77,10 +77,30 @@ def load_train(train_filepath, corpus, queries):
     return train_samples
 
 
+def load_retrieval(retrieval_filepath, corpus, queries):
+    retrieval_samples = []
+    with gzip.open(retrieval_filepath, "rt") as fIn:
+        for line in tqdm(fIn, unit_scale=True):
+            qid, corpus_id, rank, bm25_score = line.strip().split("\t")
+
+            query = queries[qid]
+            passage = corpus[corpus_id]
+
+            bm25_normalized = min_max_global(float(bm25_score), 0, 50)
+            bm25_score = int(bm25_normalized * 100)
+
+            retrieval_samples.append([query, str(bm25_score), passage])
+
+    return retrieval_samples
+
+
 if __name__ == "__main__":
     data_folder = "data/msmarco-passage"
     corpus = load_corpus(os.path.join(data_folder, "collection.tsv"))
-    queries = load_queries(os.path.join(data_folder, "queries.train.tsv"))
-    train_samples = load_train(
-        os.path.join(data_folder, "msmarco.bm25.train.tsv.gz"), corpus, queries
+    queries = load_queries(os.path.join(data_folder, "queries.dev.small.tsv"))
+    # train_samples = load_train(
+    #     os.path.join(data_folder, "msmarco.bm25.train.tsv.gz"), corpus, queries
+    # )
+    retrieval_samples = load_retrieval(
+        os.path.join(data_folder, "msmarco.bm25.dev.small.tsv.gz"), corpus, queries
     )
