@@ -165,15 +165,13 @@ _paginate: false
 - Ici la différence de perf est pas flagrante mais vous allez voir dans le tableau suivant que sur les autres datasets d'éval il y a quand même un beau boost *
 
 
-parler des core pas ouf 
+parler des score pas ouf 
 -->
 <!-- Dire qu'on a directement utiliser le min max global pour passer au tableau suivant car c'est beaucoup trop long à train ptdr -->
 ### Effet de la normalisation sur le score
 ![center w:1000px h:auto](src/result_table_bm25_normalisation.png)
 
 --- 
-
-<!-- Dire qu'on a fait que les dernière ligne car 13h de train (sans early stop aie) et 16-20 go de vram donc que la A100 de dispo -->
 
 <!-- Décrire les tableau de résultats
 - Utilisation du min max global
